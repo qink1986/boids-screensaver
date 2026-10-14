@@ -1,0 +1,21 @@
+# Build output
+/build/
+/bin/
+
+# Windows build products
+*.obj
+*.pdb
+*.ilk
+*.exe
+*.scr
+*.manifest
+
+# IDE/editor state
+.vscode/
+.idea/
+*.user
+*.suo
+
+# OS files
+.DS_Store
+Thumbs.db

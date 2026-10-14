@@ -1,0 +1,90 @@
+# Boids Screensaver
+
+Standalone Windows `.scr` screen saver with a C++17 flocking simulation and
+OpenGL rendering.
+
+![Status: initial implementation](https://img.shields.io/badge/status-initial%20implementation-blue)
+
+## Design
+
+- Standard Windows screen-saver modes: `/s`, `/p <HWND>`, `/c`, `/w`, `/d`
+- Full-screen mode covers the virtual desktop across connected monitors
+- Fixed 60 Hz simulation step, independent from render cadence
+- OpenGL double-buffered triangle rendering
+- CPU spatial grid for local neighbor search
+- Two-buffer simulation update: all boids read one stable frame, then commit
+  their next states together
+- Optional OpenMP parallel force calculation for development builds
+- Wrap-around world by default
+
+The flocking design is informed by
+[`rystrauss/boids`](https://github.com/rystrauss/boids), an MIT-licensed C++
+boids implementation. This project has a standalone Win32/OpenGL implementation.
+See [NOTICE.md](NOTICE.md) for attribution.
+
+## Run modes
+
+```text
+boids.scr /s        Full-screen screen saver
+boids.scr /p <HWND> Control-panel preview host
+boids.scr /c        Configuration information
+boids.scr /w        Resizable debug window
+boids.scr /d        Full-screen debug path
+```
+
+In `/s` mode, keyboard input, mouse clicks, or meaningful mouse motion closes
+the screen saver.
+
+## Build
+
+### MSYS2 UCRT64
+
+Install a C++ toolchain, CMake, and GNU Make. Open a UCRT64 terminal, then:
+
+```sh
+cd /d/Coding/boids-screensaver
+cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+```
+
+Output:
+
+```text
+bin/boids.scr
+```
+
+For MinGW builds, CMake statically links its C/C++ runtime by default.
+`build.bat` disables optional OpenMP so the shipped `boids.scr` needs only
+normal Windows system DLLs. Development builds can opt into OpenMP:
+
+```sh
+cmake -S . -B build -G "MinGW Makefiles" -DBOIDS_SCREENSAVER_ENABLE_OPENMP=ON
+```
+
+An OpenMP-enabled build needs `libgomp-1.dll` next to `boids.scr` on PCs
+without MSYS2.
+
+`build.bat` tries an MSVC environment first, then an MSYS2 UCRT64 environment.
+
+## Test
+
+The core simulation test checks:
+
+- deterministic fixed-step state evolution;
+- position and speed invariants after long runs;
+- empty flock and resize behavior.
+
+```sh
+ctest --test-dir build --output-on-failure
+```
+
+## Current limits
+
+This initial version uses legacy OpenGL immediate-mode triangles for portability
+and a compact codebase. Future work can replace this path with VBO/instanced
+rendering, add persisted `/c` settings, and add solid-wall boundary behavior.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
