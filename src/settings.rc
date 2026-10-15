@@ -1,0 +1,35 @@
+#include <windows.h>
+#include "settings_resource.h"
+
+IDD_SETTINGS_DIALOG DIALOGEX 0, 0, 246, 220
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Boids Screensaver Settings"
+FONT 9, "Segoe UI"
+BEGIN
+    GROUPBOX        "Simulation", -1, 7, 7, 232, 100
+    LTEXT           "Bird count:", -1, 16, 22, 82, 10
+    EDITTEXT        IDC_FLOCK_SIZE, 112, 20, 58, 14, ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "0 - 5000", -1, 176, 22, 53, 10
+    LTEXT           "Predator count:", -1, 16, 42, 82, 10
+    EDITTEXT        IDC_PREDATOR_COUNT, 112, 40, 58, 14, ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "0 - 20", -1, 176, 42, 53, 10
+    LTEXT           "Bird speed:", -1, 16, 62, 82, 10
+    EDITTEXT        IDC_MAX_SPEED, 112, 60, 58, 14, ES_AUTOHSCROLL
+    LTEXT           "50 - 800 px/s", -1, 176, 62, 53, 10
+    LTEXT           "Predator speed ratio:", -1, 16, 82, 92, 10
+    EDITTEXT        IDC_PREDATOR_SPEED_MULTIPLIER, 112, 80, 58, 14, ES_AUTOHSCROLL
+    LTEXT           "1.0 - 3.0", -1, 176, 82, 53, 10
+
+    GROUPBOX        "Walls", -1, 7, 113, 232, 65
+    CONTROL         "Enable solid walls", IDC_ENABLE_SOLID_WALLS, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 16, 128, 100, 12
+    LTEXT           "Soft wall range:", -1, 16, 148, 82, 10
+    EDITTEXT        IDC_WALL_TURN_DISTANCE, 112, 146, 58, 14, ES_AUTOHSCROLL
+    LTEXT           "0 - 500 px", -1, 176, 148, 53, 10
+    LTEXT           "Soft wall strength:", -1, 16, 166, 82, 10
+    EDITTEXT        IDC_WALL_FORCE_MULTIPLIER, 112, 164, 58, 14, ES_AUTOHSCROLL
+    LTEXT           "0.0 - 1.0", -1, 176, 166, 53, 10
+
+    PUSHBUTTON      "Restore defaults", IDC_RESTORE_DEFAULTS, 7, 190, 86, 16
+    PUSHBUTTON      "Save", IDOK, 151, 190, 40, 16
+    PUSHBUTTON      "Cancel", IDCANCEL, 199, 190, 40, 16
+END

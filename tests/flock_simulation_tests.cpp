@@ -1,9 +1,11 @@
 #include <cmath>
 #include <cstdint>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 
 #include "flock_simulation.h"
+#include "settings_config.h"
 
 namespace {
 
@@ -164,6 +166,53 @@ void test_dense_capped_flock() {
     }
 }
 
+void test_control_panel_setting_limits() {
+    boids::FlockSettings settings;
+    settings.initial_flock_size = -1;
+    settings.initial_predator_count = 999;
+    settings.max_speed = std::numeric_limits<float>::quiet_NaN();
+    settings.predator_speed_multiplier = 99.0f;
+    settings.wall_turn_distance = -5.0f;
+    settings.wall_force_multiplier = -1.0f;
+
+    const boids::FlockSettings sanitized = boids::sanitize_control_panel_settings(settings);
+    require(sanitized.initial_flock_size == boids::kMinimumFlockSize,
+            "control panel must clamp flock count");
+    require(sanitized.initial_predator_count == boids::kMaximumPredatorCount,
+            "control panel must clamp predator count");
+    require(approximately_equal(sanitized.max_speed, boids::FlockSettings{}.max_speed),
+            "control panel must restore a finite default bird speed");
+    require(approximately_equal(sanitized.predator_speed_multiplier,
+                                boids::kMaximumPredatorSpeedMultiplier),
+            "control panel must clamp predator speed ratio");
+    require(approximately_equal(sanitized.wall_turn_distance, boids::kMinimumWallTurnDistance),
+            "control panel must clamp soft wall range");
+    require(approximately_equal(sanitized.wall_force_multiplier,
+                                boids::kMinimumWallForceMultiplier),
+            "control panel must clamp soft wall strength");
+
+    settings.initial_flock_size = 2400;
+    settings.initial_predator_count = 7;
+    settings.max_speed = 525.0f;
+    settings.predator_speed_multiplier = 1.75f;
+    settings.wall_turn_distance = 180.0f;
+    settings.wall_force_multiplier = 0.6f;
+    const boids::FlockSettings preserved = boids::sanitize_control_panel_settings(settings);
+    require(preserved.initial_flock_size == settings.initial_flock_size,
+            "control panel must preserve valid flock count");
+    require(preserved.initial_predator_count == settings.initial_predator_count,
+            "control panel must preserve valid predator count");
+    require(approximately_equal(preserved.max_speed, settings.max_speed),
+            "control panel must preserve valid bird speed");
+    require(approximately_equal(preserved.predator_speed_multiplier,
+                                settings.predator_speed_multiplier),
+            "control panel must preserve valid predator speed ratio");
+    require(approximately_equal(preserved.wall_turn_distance, settings.wall_turn_distance),
+            "control panel must preserve valid soft wall range");
+    require(approximately_equal(preserved.wall_force_multiplier, settings.wall_force_multiplier),
+            "control panel must preserve valid soft wall strength");
+}
+
 void test_resize_and_empty_flock() {
     boids::FlockSettings settings;
     settings.initial_flock_size = 0;
@@ -189,6 +238,7 @@ int main() {
         test_long_running_wrapped_flock();
         test_solid_wall_flock();
         test_dense_capped_flock();
+        test_control_panel_setting_limits();
         test_resize_and_empty_flock();
         std::cout << "flock simulation tests: PASS\n";
         return 0;

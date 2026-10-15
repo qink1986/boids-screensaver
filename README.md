@@ -29,7 +29,7 @@ See [NOTICE.md](NOTICE.md) for attribution.
 ```text
 boids.scr /s        Full-screen screen saver
 boids.scr /p <HWND> Control-panel preview host
-boids.scr /c        Configuration information
+boids.scr /c        Persisted settings panel (also accepts Windows' /c:<HWND> form)
 boids.scr /w        Resizable debug window
 boids.scr /d        Full-screen debug path
 ```
@@ -71,10 +71,18 @@ without MSYS2.
 
 ## Test
 
+The `/c` control panel (including Windows' `/c:<HWND>` invocation) saves these
+per-user settings in `HKCU\\Software\\Qink\\BoidsScreensaver`; saved values
+affect later `/s`, `/w`, and `/d` launches. The small `/p` preview deliberately
+remains capped at 120 birds. Available settings: solid walls, bird count,
+predator count, bird speed, predator speed ratio, soft-wall range, soft-wall
+strength, and restore defaults.
+
 The core simulation test checks:
 
 - deterministic fixed-step state evolution, including dense capped flocks;
 - position and speed invariants after long runs;
+- control-panel setting limits;
 - empty flock and resize behavior.
 
 ```sh
@@ -85,7 +93,7 @@ ctest --test-dir build --output-on-failure
 
 This initial version uses legacy OpenGL immediate-mode triangles for portability
 and a compact codebase. Future work can replace this path with VBO/instanced
-rendering, add persisted `/c` settings, and add solid-wall boundary behavior.
+rendering.
 
 ## License
 

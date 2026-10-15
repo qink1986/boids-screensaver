@@ -15,6 +15,8 @@ endif ()
 add_library(flock_core STATIC
     src/flock_simulation.cpp
     src/flock_simulation.h
+    src/settings_config.cpp
+    src/settings_config.h
 )
 target_include_directories(flock_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
@@ -29,10 +31,16 @@ else ()
 endif ()
 
 if (WIN32)
+    enable_language(RC)
+
     add_executable(boids_screensaver WIN32
         src/boids_screensaver.cpp
+        src/settings_dialog.cpp
+        src/settings_dialog.h
+        src/settings_resource.h
+        src/settings.rc
     )
-    target_link_libraries(boids_screensaver PRIVATE flock_core opengl32 user32 gdi32)
+    target_link_libraries(boids_screensaver PRIVATE flock_core opengl32 user32 gdi32 advapi32)
 
     if (MSVC)
         target_compile_options(boids_screensaver PRIVATE /W4 /permissive-)

@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <cstring>
 #include "flock_simulation.h"
+#include "settings_dialog.h"
 
 namespace {
 
@@ -301,23 +302,34 @@ HWND create_saver_window(HWND preview_parent) {
         nullptr);
 }
 
-void show_configuration_message() {
-    const char* message =
-        "Boids Screensaver\n\n"
-        "Current defaults:\n"
-        "- 1200 boids and 3 predators\n"
-        "- solid walls with smooth proximity steering\n"
-        "- 60 Hz simulation\n"
-        "- mouse or keyboard exits screen-saver mode\n\n"
-        "Use /w for a resizable debug window.";
-    MessageBoxA(nullptr, message, kAppTitle, MB_OK | MB_ICONINFORMATION);
-}
-
 bool command_has_no_arguments(const char* text) {
     while (*text == ' ' || *text == '\t' || *text == ':') {
         ++text;
     }
     return *text == '\0';
+}
+
+bool parse_configuration_owner(char* text, HWND* owner) {
+    while (*text == ' ' || *text == '\t' || *text == ':') {
+        ++text;
+    }
+    if (*text == '\0') {
+        *owner = nullptr;
+        return true;
+    }
+
+    char* end = nullptr;
+    const unsigned long long raw = std::strtoull(text, &end, 0);
+    while (*end == ' ' || *end == '\t') {
+        ++end;
+    }
+    if (end == text || *end != '\0') {
+        return false;
+    }
+
+    const HWND parsed_owner = reinterpret_cast<HWND>(static_cast<uintptr_t>(raw));
+    *owner = IsWindow(parsed_owner) != FALSE ? parsed_owner : nullptr;
+    return true;
 }
 
 }  // namespace
@@ -333,8 +345,17 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR command_line, int) {
     }
 
     HWND preview_parent = nullptr;
-    if (*cursor == '\0' || (_strnicmp(cursor, "/c", 2) == 0 && command_has_no_arguments(cursor + 2))) {
-        show_configuration_message();
+    HWND configuration_owner = nullptr;
+    if (*cursor == '\0') {
+        boids::show_control_panel(g_instance);
+        return 0;
+    }
+    if (_strnicmp(cursor, "/c", 2) == 0) {
+        if (!parse_configuration_owner(cursor + 2, &configuration_owner)) {
+            message_box("Configuration mode accepts only an optional window handle.");
+            return 1;
+        }
+        boids::show_control_panel(g_instance, configuration_owner);
         return 0;
     }
     if (_strnicmp(cursor, "/a", 2) == 0) {
@@ -372,9 +393,13 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR command_line, int) {
     }
 
     get_client_size(g_window);
-    boids::FlockSettings settings;
-    settings.initial_flock_size = g_preview ? 120 : 1200;
-    settings.boid_size = g_preview ? 2.5f : 6.0f;
+    boids::FlockSettings settings = boids::load_control_panel_settings();
+    if (g_preview) {
+        // Keep Windows' tiny control-panel preview inexpensive regardless of
+        // the user's full-screen population setting.
+        settings.initial_flock_size = 120;
+        settings.boid_size = 2.5f;
+    }
     g_simulation = new boids::FlockSimulation(
         static_cast<float>(g_client_width), static_cast<float>(g_client_height), settings,
         static_cast<std::uint32_t>(GetTickCount()));
