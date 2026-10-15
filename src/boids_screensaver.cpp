@@ -36,6 +36,7 @@ bool g_preview = false;
 bool g_fullscreen = false;
 bool g_adjustment_mode = false;
 bool g_exit_on_input = false;
+HWND g_adjustment_panel = nullptr;
 POINT g_initial_mouse{};
 int g_client_width = 1;
 int g_client_height = 1;
@@ -190,6 +191,47 @@ void request_exit() {
     }
 }
 
+void apply_adjustment_settings(void* context, const boids::FlockSettings& settings) {
+    auto* const simulation = static_cast<boids::FlockSimulation*>(context);
+    if (simulation == nullptr) {
+        return;
+    }
+
+    simulation->apply_settings(settings);
+    g_accumulator = 0.0f;
+    g_last_frame_time = std::chrono::steady_clock::now();
+}
+
+void position_adjustment_panel(HWND panel) {
+    RECT owner_rect{};
+    RECT panel_rect{};
+    if (!GetWindowRect(g_window, &owner_rect) || !GetWindowRect(panel, &panel_rect)) {
+        return;
+    }
+
+    MONITORINFO monitor_info{};
+    monitor_info.cbSize = sizeof(monitor_info);
+    const HMONITOR monitor = MonitorFromWindow(g_window, MONITOR_DEFAULTTONEAREST);
+    if (monitor == nullptr || !GetMonitorInfoA(monitor, &monitor_info)) {
+        return;
+    }
+
+    const int panel_width = panel_rect.right - panel_rect.left;
+    const int panel_height = panel_rect.bottom - panel_rect.top;
+    const RECT work_area = monitor_info.rcWork;
+    int x = owner_rect.right + 12;
+    if (x + panel_width > work_area.right) {
+        x = owner_rect.left - panel_width - 12;
+    }
+    const int minimum_x = static_cast<int>(work_area.left);
+    const int maximum_x = std::max(minimum_x, static_cast<int>(work_area.right) - panel_width);
+    x = std::clamp(x, minimum_x, maximum_x);
+    const int minimum_y = static_cast<int>(work_area.top);
+    const int maximum_y = std::max(minimum_y, static_cast<int>(work_area.bottom) - panel_height);
+    const int y = std::clamp(static_cast<int>(owner_rect.top), minimum_y, maximum_y);
+    SetWindowPos(panel, HWND_TOP, x, y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
+}
+
 LRESULT CALLBACK window_procedure(HWND window, UINT message, WPARAM w_param, LPARAM l_param) {
     switch (message) {
     case WM_CREATE:
@@ -240,6 +282,10 @@ LRESULT CALLBACK window_procedure(HWND window, UINT message, WPARAM w_param, LPA
         return 0;
 
     case WM_DESTROY:
+        if (g_adjustment_panel != nullptr && IsWindow(g_adjustment_panel)) {
+            DestroyWindow(g_adjustment_panel);
+        }
+        g_adjustment_panel = nullptr;
         KillTimer(window, kFrameTimerId);
         PostQuitMessage(0);
         return 0;
@@ -290,7 +336,7 @@ HWND create_saver_window(HWND preview_parent) {
     return CreateWindowExA(
         extended_style,
         kWindowClass,
-        g_adjustment_mode ? "Boids Screensaver — Debug Window" : kAppTitle,
+        g_adjustment_mode ? "Boids Screensaver — Live Adjustment" : kAppTitle,
         style,
         x,
         y,
@@ -415,9 +461,23 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR command_line, int) {
     g_last_frame_time = std::chrono::steady_clock::now();
     ShowWindow(g_window, g_fullscreen ? SW_SHOWNOACTIVATE : SW_SHOW);
     UpdateWindow(g_window);
+    if (g_adjustment_mode) {
+        g_adjustment_panel = boids::create_adjustment_panel(
+            g_instance, g_window, g_simulation->settings(), apply_adjustment_settings, g_simulation);
+        if (g_adjustment_panel != nullptr) {
+            position_adjustment_panel(g_adjustment_panel);
+            ShowWindow(g_adjustment_panel, SW_SHOW);
+        }
+    }
 
     MSG message{};
     while (GetMessageA(&message, nullptr, 0, 0) > 0) {
+        if (g_adjustment_panel != nullptr && !IsWindow(g_adjustment_panel)) {
+            g_adjustment_panel = nullptr;
+        }
+        if (g_adjustment_panel != nullptr && IsDialogMessageA(g_adjustment_panel, &message)) {
+            continue;
+        }
         TranslateMessage(&message);
         DispatchMessageA(&message);
     }

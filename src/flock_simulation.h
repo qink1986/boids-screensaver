@@ -81,6 +81,9 @@ public:
     FlockSimulation(float width, float height, FlockSettings settings = {}, std::uint32_t seed = 1);
 
     void reset(int flock_size);
+    // Replaces settings and recreates the flock so population and steering
+    // changes take effect as one deterministic transition.
+    void apply_settings(FlockSettings settings);
     void resize(float width, float height);
     void step(float seconds);
 

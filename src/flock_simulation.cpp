@@ -149,6 +149,11 @@ void FlockSimulation::reset(int flock_size) {
     resize_grid();
 }
 
+void FlockSimulation::apply_settings(FlockSettings settings) {
+    settings_ = settings;
+    reset(settings_.initial_flock_size);
+}
+
 void FlockSimulation::resize(float width, float height) {
     width_ = std::max(width, 1.0f);
     height_ = std::max(height, 1.0f);

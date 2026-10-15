@@ -30,7 +30,7 @@ See [NOTICE.md](NOTICE.md) for attribution.
 boids.scr /s        Full-screen screen saver
 boids.scr /p <HWND> Control-panel preview host
 boids.scr /c        Persisted settings panel (also accepts Windows' /c:<HWND> form)
-boids.scr /w        Resizable debug window
+boids.scr /w        Resizable live-adjustment window
 boids.scr /d        Full-screen debug path
 ```
 
@@ -73,7 +73,9 @@ without MSYS2.
 
 The `/c` control panel (including Windows' `/c:<HWND>` invocation) saves these
 per-user settings in `HKCU\\Software\\Qink\\BoidsScreensaver`; saved values
-affect later `/s`, `/w`, and `/d` launches. The small `/p` preview deliberately
+affect later `/s`, `/w`, and `/d` launches. In `/w`, the same non-modal panel
+opens beside the renderer; each **Save** persists its values and immediately
+recreates the displayed flock with them. The small `/p` preview deliberately
 remains capped at 120 birds. Available settings: solid walls, bird count,
 predator count, bird speed, predator speed ratio, soft-wall range, soft-wall
 strength, and restore defaults.

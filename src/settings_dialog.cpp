@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <new>
 
 #include "settings_config.h"
 #include "settings_resource.h"
@@ -22,6 +23,13 @@ constexpr char kPredatorSpeedMultiplierValue[] = "PredatorSpeedMultiplier";
 constexpr char kWallTurnDistanceValue[] = "WallTurnDistance";
 constexpr char kWallForceMultiplierValue[] = "WallForceMultiplier";
 constexpr std::size_t kControlTextLength = 64;
+
+struct SettingsDialogState {
+    FlockSettings settings;
+    SettingsSavedCallback on_saved = nullptr;
+    void* context = nullptr;
+    bool modeless = false;
+};
 
 bool read_dword(HKEY key, const char* name, DWORD* value) {
     DWORD type = 0;
@@ -234,20 +242,43 @@ bool save_control_panel_settings(const FlockSettings& settings) {
     return saved;
 }
 
+SettingsDialogState* dialog_state(HWND dialog) {
+    return reinterpret_cast<SettingsDialogState*>(
+        GetWindowLongPtrA(dialog, GWLP_USERDATA));
+}
+
+void close_settings_dialog(HWND dialog, SettingsDialogState* state, INT_PTR result) {
+    if (state->modeless) {
+        DestroyWindow(dialog);
+    } else {
+        EndDialog(dialog, result);
+    }
+}
+
 INT_PTR CALLBACK settings_dialog_procedure(HWND dialog, UINT message, WPARAM w_param, LPARAM l_param) {
     switch (message) {
-    case WM_INITDIALOG:
-        populate_controls(dialog, *reinterpret_cast<const FlockSettings*>(l_param));
+    case WM_INITDIALOG: {
+        auto* const state = reinterpret_cast<SettingsDialogState*>(l_param);
+        if (state == nullptr) {
+            return FALSE;
+        }
+        SetWindowLongPtrA(dialog, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(state));
+        populate_controls(dialog, state->settings);
         return TRUE;
+    }
 
-    case WM_COMMAND:
+    case WM_COMMAND: {
+        SettingsDialogState* const state = dialog_state(dialog);
+        if (state == nullptr) {
+            return FALSE;
+        }
         switch (LOWORD(w_param)) {
         case IDC_RESTORE_DEFAULTS:
             populate_controls(dialog, FlockSettings{});
             return TRUE;
 
         case IDOK: {
-            FlockSettings settings = load_control_panel_settings();
+            FlockSettings settings = state->settings;
             if (!read_controls(dialog, &settings)) {
                 return TRUE;
             }
@@ -256,17 +287,42 @@ INT_PTR CALLBACK settings_dialog_procedure(HWND dialog, UINT message, WPARAM w_p
                             "Boids Screensaver", MB_OK | MB_ICONERROR);
                 return TRUE;
             }
-            EndDialog(dialog, IDOK);
+            state->settings = settings;
+            if (state->on_saved != nullptr) {
+                state->on_saved(state->context, settings);
+            }
+            if (!state->modeless) {
+                close_settings_dialog(dialog, state, IDOK);
+            }
             return TRUE;
         }
 
         case IDCANCEL:
-            EndDialog(dialog, IDCANCEL);
+            close_settings_dialog(dialog, state, IDCANCEL);
             return TRUE;
 
         default:
             return FALSE;
         }
+    }
+
+    case WM_CLOSE: {
+        SettingsDialogState* const state = dialog_state(dialog);
+        if (state != nullptr) {
+            close_settings_dialog(dialog, state, IDCANCEL);
+            return TRUE;
+        }
+        return FALSE;
+    }
+
+    case WM_NCDESTROY: {
+        SettingsDialogState* const state = dialog_state(dialog);
+        SetWindowLongPtrA(dialog, GWLP_USERDATA, 0);
+        if (state != nullptr && state->modeless) {
+            delete state;
+        }
+        return FALSE;
+    }
 
     default:
         return FALSE;
@@ -301,16 +357,43 @@ FlockSettings load_control_panel_settings() {
 }
 
 void show_control_panel(HINSTANCE instance, HWND owner) {
-    FlockSettings settings = load_control_panel_settings();
+    SettingsDialogState state{};
+    state.settings = load_control_panel_settings();
     const INT_PTR result = DialogBoxParamA(instance, MAKEINTRESOURCEA(IDD_SETTINGS_DIALOG), owner,
                                            settings_dialog_procedure,
-                                           reinterpret_cast<LPARAM>(&settings));
+                                           reinterpret_cast<LPARAM>(&state));
     if (result == -1) {
         char message[128]{};
         std::snprintf(message, sizeof(message), "Could not open settings dialog (error %lu).",
                       GetLastError());
-        MessageBoxA(nullptr, message, "Boids Screensaver", MB_OK | MB_ICONERROR);
+        MessageBoxA(owner, message, "Boids Screensaver", MB_OK | MB_ICONERROR);
     }
+}
+
+HWND create_adjustment_panel(HINSTANCE instance, HWND owner,
+                             const FlockSettings& initial_settings,
+                             SettingsSavedCallback on_saved, void* context) {
+    auto* const state = new (std::nothrow) SettingsDialogState{
+        initial_settings, on_saved, context, true};
+    if (state == nullptr) {
+        MessageBoxA(owner, "Could not allocate the live settings panel.",
+                    "Boids Screensaver", MB_OK | MB_ICONERROR);
+        return nullptr;
+    }
+
+    const HWND panel = CreateDialogParamA(instance, MAKEINTRESOURCEA(IDD_SETTINGS_DIALOG), owner,
+                                          settings_dialog_procedure,
+                                          reinterpret_cast<LPARAM>(state));
+    if (panel == nullptr) {
+        const DWORD error = GetLastError();
+        delete state;
+        char message[128]{};
+        std::snprintf(message, sizeof(message), "Could not open settings panel (error %lu).", error);
+        MessageBoxA(owner, message, "Boids Screensaver", MB_OK | MB_ICONERROR);
+        return nullptr;
+    }
+
+    return panel;
 }
 
 }  // namespace boids

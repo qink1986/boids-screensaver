@@ -213,6 +213,43 @@ void test_control_panel_setting_limits() {
             "control panel must preserve valid soft wall strength");
 }
 
+void test_apply_settings_recreates_flock() {
+    boids::FlockSettings original;
+    original.initial_flock_size = 8;
+    original.initial_predator_count = 1;
+    boids::FlockSimulation simulation(800.0f, 600.0f, original, 0xACCE551u);
+
+    boids::FlockSettings adjusted = original;
+    adjusted.initial_flock_size = 23;
+    adjusted.initial_predator_count = 4;
+    adjusted.max_speed = 525.0f;
+    adjusted.predator_speed_multiplier = 1.75f;
+    adjusted.wall_turn_distance = 180.0f;
+    adjusted.wall_force_multiplier = 0.6f;
+    adjusted.wrap_edges = true;
+    simulation.apply_settings(adjusted);
+
+    const boids::FlockSettings& active = simulation.settings();
+    require(active.initial_flock_size == adjusted.initial_flock_size,
+            "applying settings must update flock size");
+    require(active.initial_predator_count == adjusted.initial_predator_count,
+            "applying settings must update predator count");
+    require(approximately_equal(active.max_speed, adjusted.max_speed),
+            "applying settings must update bird speed");
+    require(approximately_equal(active.predator_speed_multiplier,
+                                adjusted.predator_speed_multiplier),
+            "applying settings must update predator speed ratio");
+    require(active.wrap_edges == adjusted.wrap_edges,
+            "applying settings must update boundary mode");
+    require(simulation.boids().size() == 27,
+            "applying settings must recreate the configured prey and predators");
+    require(predator_count(simulation) == 4,
+            "applying settings must recreate the configured predator population");
+
+    simulation.step(1.0f / 60.0f);
+    require_valid_flock(simulation);
+}
+
 void test_resize_and_empty_flock() {
     boids::FlockSettings settings;
     settings.initial_flock_size = 0;
@@ -239,6 +276,7 @@ int main() {
         test_solid_wall_flock();
         test_dense_capped_flock();
         test_control_panel_setting_limits();
+        test_apply_settings_recreates_flock();
         test_resize_and_empty_flock();
         std::cout << "flock simulation tests: PASS\n";
         return 0;
