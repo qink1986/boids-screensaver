@@ -12,10 +12,12 @@ OpenGL rendering.
 - Fixed 60 Hz simulation step, independent from render cadence
 - OpenGL double-buffered triangle rendering
 - CPU spatial grid for local neighbor search
+- Dense-flock protection: each prey samples at most 96 local candidates per update
+- Three red predators: hunt closest visible prey; prey flee their danger radius
 - Two-buffer simulation update: all boids read one stable frame, then commit
   their next states together
 - Optional OpenMP parallel force calculation for development builds
-- Wrap-around world by default
+- Solid walls by default: a distance-based soft force starts 100 px from each wall and grows toward it; only the physical screen edge is a hard boundary; wrap-around remains configurable in code
 
 The flocking design is informed by
 [`rystrauss/boids`](https://github.com/rystrauss/boids), an MIT-licensed C++
@@ -71,7 +73,7 @@ without MSYS2.
 
 The core simulation test checks:
 
-- deterministic fixed-step state evolution;
+- deterministic fixed-step state evolution, including dense capped flocks;
 - position and speed invariants after long runs;
 - empty flock and resize behavior.
 

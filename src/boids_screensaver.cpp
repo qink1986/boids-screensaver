@@ -166,12 +166,17 @@ void render_frame() {
     update_projection();
     glClear(GL_COLOR_BUFFER_BIT);
 
-    const float size = g_simulation->settings().boid_size;
+    const auto& settings = g_simulation->settings();
     glBegin(GL_TRIANGLES);
     for (const boids::Boid& boid : g_simulation->boids()) {
-        const float speed_ratio = std::min(1.0f, boid.velocity.length() / g_simulation->settings().max_speed);
-        glColor3f(0.20f + 0.25f * speed_ratio, 0.66f + 0.28f * speed_ratio, 0.95f);
-        draw_boid(boid, size);
+        if (boid.is_predator) {
+            glColor3f(0.96f, 0.20f, 0.16f);
+            draw_boid(boid, settings.boid_size * 1.65f);
+        } else {
+            const float speed_ratio = std::min(1.0f, boid.velocity.length() / settings.max_speed);
+            glColor3f(0.20f + 0.25f * speed_ratio, 0.66f + 0.28f * speed_ratio, 0.95f);
+            draw_boid(boid, settings.boid_size);
+        }
     }
     glEnd();
 
@@ -300,7 +305,8 @@ void show_configuration_message() {
     const char* message =
         "Boids Screensaver\n\n"
         "Current defaults:\n"
-        "- 1200 boids\n"
+        "- 1200 boids and 3 predators\n"
+        "- solid walls with smooth proximity steering\n"
         "- 60 Hz simulation\n"
         "- mouse or keyboard exits screen-saver mode\n\n"
         "Use /w for a resizable debug window.";
