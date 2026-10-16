@@ -5,6 +5,8 @@ OpenGL rendering.
 
 ![Status: initial implementation](https://img.shields.io/badge/status-initial%20implementation-blue)
 
+![Boids flock in the live-adjustment renderer](docs/screenshots/boids-screensaver.png)
+
 ## Design
 
 - Standard Windows screen-saver modes: `/s`, `/p <HWND>`, `/c`, `/w`, `/d`
